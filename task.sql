@@ -6,12 +6,10 @@
 -- create tables if dne
 DO $$ 
 BEGIN
-    -- task_status type
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'task_status') THEN
         CREATE TYPE task_status AS ENUM ('pending', 'completed');
     END IF;
     
-    -- tasks table
     IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'tasks') THEN
         CREATE TABLE tasks (
             id SERIAL PRIMARY KEY,
@@ -85,16 +83,80 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION delete_task(task_title TEXT) RETURNS SETOF tasks_view AS $$
+BEGIN
+    DELETE FROM tasks 
+    WHERE title ILIKE task_title;
+    
+    IF FOUND THEN
+        RAISE NOTICE 'Deleted: %', task_title;
+    ELSE
+        RAISE NOTICE 'No task found: %', task_title;
+    END IF;
+
+    RETURN QUERY SELECT * FROM tasks_view;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION search_tasks(search_term TEXT) RETURNS SETOF tasks_view AS $$
+BEGIN
+    RETURN QUERY 
+    SELECT * FROM tasks_view 
+    WHERE title ILIKE '%' || search_term || '%';
+
+    IF NOT FOUND THEN
+        RAISE NOTICE 'No tasks found matching: %', search_term;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION update_task(task_desc TEXT) RETURNS SETOF tasks_view AS $$
+DECLARE
+    title_part TEXT;
+    date_part TEXT;
+    old_title TEXT;
+    new_title TEXT;
+BEGIN
+    old_title := split_part(task_desc, ' -> ', 1);
+    title_part := split_part(task_desc, ' -> ', 2);
+    
+    IF title_part = '' THEN
+        RAISE EXCEPTION 'Usage: update_task(''Old Title -> New Title: YYYY-MM-DD'')';
+    END IF;
+    
+    new_title := split_part(title_part, ':', 1);
+    date_part := trim(split_part(title_part, ':', 2));
+    
+    UPDATE tasks 
+    SET title = trim(new_title),
+        deadline = date_part::DATE
+    WHERE title ILIKE old_title;
+    
+    IF FOUND THEN
+        RAISE NOTICE 'Updated: % -> % (due: %)', old_title, new_title, date_part;
+    ELSE
+        RAISE NOTICE 'No task found: %', old_title;
+    END IF;
+
+    RETURN QUERY SELECT * FROM tasks_view;
+END;
+$$ LANGUAGE plpgsql;
+
 -- welcome
 \echo '\n=== Task Manager ==='
 \echo 'Commands:'
-\echo '  SELECT * FROM list_tasks();           - List all tasks'
-\echo '  SELECT add_task(''task: YYYY-MM-DD'');  - Add task'
-\echo '  SELECT complete_task(''task'');         - Complete task'
-\echo '  \q                                    - Quit'
+\echo '  SELECT * FROM list_tasks();                              - List all tasks'
+\echo '  SELECT add_task(''task: YYYY-MM-DD'');                     - Add task'
+\echo '  SELECT complete_task(''task'');                            - Complete task'
+\echo '  SELECT delete_task(''task'');                             - Delete task'
+\echo '  SELECT search_tasks(''term'');                            - Search tasks'
+\echo '  SELECT update_task(''Old Task -> New Task: YYYY-MM-DD''); - Update task'
+\echo '  \q                                                       - Quit'
 \echo '\nExample usage:'
 \echo '  SELECT add_task(''Buy groceries: 2024-12-24'');'
 \echo '  SELECT complete_task(''Buy groceries'');'
+\echo '  SELECT search_tasks(''groceries'');'
+\echo '  SELECT update_task(''Buy groceries -> Buy food: 2024-12-25'');'
 \echo '\nCurrent tasks:'
 
 SELECT * FROM list_tasks();
