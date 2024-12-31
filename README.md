@@ -18,15 +18,20 @@
 
     - Current week view: SELECT week();
 
-    - Specific week view: SELECT week('YYY-MM-DD');
+    - Specific week view: SELECT week('YYYY-MM-DD');
+
+    - Current month view: SELECT month();
+
+    - Specific month view: SELECT month('YYYY-MM-DD');
 
     - Quit: \q enter enter  
 
     - Enter to scroll downwards                                         
 
-## How to Run:
-1. Have psql (comes with PostgreSQL installer or you can use homebrew etc.)
-2. Run: cat task.sql - | psql -d task_manager
+## Installation:
+1. Install psql (comes with PostgreSQL installer or you can use homebrew etc.)
+2. ```git clone https://github.com/RohanAdwankar/pureSQLCLI.git```
+3. ```cat pureSQLCLI/task.sql - | psql -d task_manager```
 
 ## why was this made???
 - to improve my SQL skills

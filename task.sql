@@ -201,7 +201,86 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- welcome
+CREATE OR REPLACE FUNCTION month(target_date DATE DEFAULT CURRENT_DATE) RETURNS TEXT AS $$
+DECLARE
+    first_of_month DATE;
+    last_of_month DATE;
+    current_date_in_view DATE;
+    result TEXT;
+    week_start DATE;
+    week_data TEXT[];
+    day_tasks TEXT;
+    month_name TEXT;
+    year_num TEXT;
+BEGIN
+    first_of_month := DATE_TRUNC('month', target_date)::DATE;
+    last_of_month := (DATE_TRUNC('month', target_date) + INTERVAL '1 month' - INTERVAL '1 day')::DATE;
+    month_name := to_char(target_date, 'FMMonth');
+    year_num := to_char(target_date, 'YYYY');
+    
+    result := E'\n';
+    result := result || format(E'%s %s\n', month_name, year_num);
+    result := result || E'+------------+------------+------------+------------+------------+------------+------------+\n';
+    result := result || E'|   Monday   |  Tuesday   | Wednesday  |  Thursday  |   Friday   |  Saturday  |   Sunday   |\n';
+    result := result || E'+------------+------------+------------+------------+------------+------------+------------+\n';
+
+    week_start := first_of_month - EXTRACT(DOW FROM first_of_month - 1)::INTEGER;
+    
+    WHILE week_start <= last_of_month LOOP
+        SELECT array_agg(day_text)
+        INTO week_data
+        FROM (
+            SELECT 
+                CASE 
+                    WHEN DATE(day) < first_of_month OR DATE(day) > last_of_month THEN
+                        '            '
+                    ELSE
+                        CASE 
+                            WHEN EXISTS (
+                                SELECT 1 FROM tasks 
+                                WHERE DATE(deadline) = DATE(day)
+                            ) THEN
+                                to_char(DATE(day), 'DD') || ' ' || (
+                                    SELECT format('%s/%s  ',
+                                        COUNT(CASE WHEN status = 'completed' THEN 1 END),
+                                        COUNT(*)
+                                    )
+                                    FROM tasks
+                                    WHERE DATE(deadline) = DATE(day)
+                                ) || repeat(' ', 
+                                    GREATEST(0, 
+                                        10 - length(to_char(DATE(day), 'DD')) - 
+                                        length((
+                                            SELECT format('%s/%s ',
+                                                COUNT(CASE WHEN status = 'completed' THEN 1 END),
+                                                COUNT(*)
+                                            )
+                                            FROM tasks
+                                            WHERE DATE(deadline) = DATE(day)
+                                        ))
+                                    ))
+                            ELSE
+                                RPAD(to_char(DATE(day), 'DD'), 12, ' ')
+                        END
+                END as day_text
+            FROM generate_series(
+                week_start,
+                week_start + 6,
+                '1 day'::interval
+            ) day
+            ORDER BY day
+        ) week_days;
+
+        result := result || '|' || array_to_string(week_data, '|') || E'|\n';
+        week_start := week_start + 7;
+    END LOOP;
+
+    result := result || E'+------------+------------+------------+------------+------------+------------+------------+\n';
+    
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql;
+
 \echo '\n=== Task Manager ==='
 \echo '\nHit enter to see current tasks and continue.'
 
