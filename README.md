@@ -1,4 +1,4 @@
-![demo](https://github.com/user-attachments/assets/ccf1341c-cd53-4db3-917a-14aefdd1af0c)# Pure SQL Task Management CLI
+# Pure SQL Task Management CLI
 ![demo](https://github.com/user-attachments/assets/9c26e287-9a56-4498-952b-9090ad26e995)
 ## Features
 ### View Tasks
