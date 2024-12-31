@@ -281,7 +281,20 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-\echo '\n=== Task Manager ==='
-\echo '\nHit enter to see current tasks and continue.'
+-- misc functions
+CREATE OR REPLACE FUNCTION howdy_partner() RETURNS TEXT AS $$
+BEGIN
+    RETURN E'
+  ____   ___  _     _____         _     __  __                                   
+ / ___| / _ \\| |   |_   _|_ _ ___| |_  |  \\/  |__ _ _ _  __ _ __ _ ___ _ _ 
+ \\___ \\| | | | |     | |/ _` (_-<| |_| | |\\/| / _` | \' \\/ _` / _` / -_) \'_|
+  ___) | |_| | |___  | |\\__,_/__/|_|_| |_|  |_\\__,_|_||_\\__,_\\__, \\___|_|  
+ |____/ \\__\\_\\_____| |_|                                     |___/           
+';
+END;
+$$ LANGUAGE plpgsql;
 
+-- UI
+SELECT howdy_partner();
+\echo '\nHit enter to see current tasks and continue.'
 SELECT * FROM list_tasks();
