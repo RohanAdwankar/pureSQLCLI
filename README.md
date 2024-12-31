@@ -37,7 +37,7 @@
 
 ## Why was this made?
 - To improve my SQL fluency as previously I've only written small queries. To learn a language I usually make a CLI. I guess SQL is no exception!
-- Needed a quick task manager that didn't have all the excess features and bloat
+- Needed a quick task manager that didn't have all the excess features and bloat.
 - I thought it would be funny to have a fully functional CLI entirely in a .sql file.
 
 ## Next Steps
