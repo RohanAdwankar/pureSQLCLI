@@ -1,20 +1,8 @@
 # Purely SQL Task Management CLI
 
 ## Features
-- saves tasks in PostgreSQL
-- neat table views
-- easy and concise functions
-    - List all tasks : SELECT * FROM list_tasks();
-
-    - Add task: SELECT add_task(''task: YYYY-MM-DD'');
-
-    - Complete task: SELECT complete_task(''task'');
-
-    - Delete task: SELECT delete_task(''task'');
-
-    - Search tasks: SELECT search_tasks(''term'');
-
-    - Update task: SELECT update_task(''Old Task -> New Task: YYYY-MM-DD'');
+### View Tasks
+    - View all tasks : SELECT * FROM list_tasks();
 
     - Current week view: SELECT week();
 
@@ -24,9 +12,21 @@
 
     - Specific month view: SELECT month('YYYY-MM-DD');
 
+    - Search tasks: SELECT search('term');
+
+### Edit Tasks
+    - Add task: SELECT add('task: YYYY-MM-DD');
+
+    - Complete task: SELECT done('task');
+
+    - Delete task: SELECT delete('task');
+
+    - Update task: SELECT change('Old Task -> New Task: YYYY-MM-DD');
+
+### General Editor Commands
     - Quit: \q enter enter  
 
-    - Enter to scroll downwards                                         
+    - Scroll Downwards: enter                                         
 
 ## Installation:
 1. Install psql (comes with PostgreSQL installer or you can use homebrew etc.)

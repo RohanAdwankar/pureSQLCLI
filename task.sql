@@ -3,7 +3,7 @@
 \pset null '(null)'
 \pset pager off
 
--- create tables if dne
+-- initialization
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'task_status') THEN
@@ -27,7 +27,7 @@ BEGIN
 END
 $$;
 
--- view
+-- task views
 CREATE OR REPLACE VIEW tasks_view AS
 SELECT 
     ROW_NUMBER() OVER (ORDER BY status, deadline) as "#",
@@ -43,98 +43,6 @@ FROM tasks
 ORDER BY 
     CASE status WHEN 'pending' THEN 0 ELSE 1 END,
     deadline;
-
--- functions
-CREATE OR REPLACE FUNCTION add_task(task_desc TEXT) RETURNS SETOF tasks_view AS $$
-DECLARE
-    title_part TEXT;
-    date_part TEXT;
-BEGIN
-    title_part := split_part(task_desc, ':', 1);
-    date_part := trim(split_part(task_desc, ':', 2));
-    
-    INSERT INTO tasks (title, deadline) 
-    VALUES (trim(title_part), date_part::DATE);
-    
-    RAISE NOTICE 'Added: % (due: %)', trim(title_part), date_part;
-    RETURN QUERY SELECT * FROM tasks_view;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION complete_task(task_title TEXT) RETURNS SETOF tasks_view AS $$
-BEGIN
-    UPDATE tasks SET status = 'completed' 
-    WHERE title ILIKE task_title 
-    AND status = 'pending';
-    
-    IF FOUND THEN
-        RAISE NOTICE 'Completed: %', task_title;
-    ELSE
-        RAISE NOTICE 'No pending task found: %', task_title;
-    END IF;
-
-    RETURN QUERY SELECT * FROM tasks_view;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION delete_task(task_title TEXT) RETURNS SETOF tasks_view AS $$
-BEGIN
-    DELETE FROM tasks 
-    WHERE title ILIKE task_title;
-    
-    IF FOUND THEN
-        RAISE NOTICE 'Deleted: %', task_title;
-    ELSE
-        RAISE NOTICE 'No task found: %', task_title;
-    END IF;
-
-    RETURN QUERY SELECT * FROM tasks_view;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION search_tasks(search_term TEXT) RETURNS SETOF tasks_view AS $$
-BEGIN
-    RETURN QUERY 
-    SELECT * FROM tasks_view 
-    WHERE title ILIKE '%' || search_term || '%';
-
-    IF NOT FOUND THEN
-        RAISE NOTICE 'No tasks found matching: %', search_term;
-    END IF;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION update_task(task_desc TEXT) RETURNS SETOF tasks_view AS $$
-DECLARE
-    title_part TEXT;
-    date_part TEXT;
-    old_title TEXT;
-    new_title TEXT;
-BEGIN
-    old_title := split_part(task_desc, ' -> ', 1);
-    title_part := split_part(task_desc, ' -> ', 2);
-    
-    IF title_part = '' THEN
-        RAISE EXCEPTION 'Usage: update_task(''Old Title -> New Title: YYYY-MM-DD'')';
-    END IF;
-    
-    new_title := split_part(title_part, ':', 1);
-    date_part := trim(split_part(title_part, ':', 2));
-    
-    UPDATE tasks 
-    SET title = trim(new_title),
-        deadline = date_part::DATE
-    WHERE title ILIKE old_title;
-    
-    IF FOUND THEN
-        RAISE NOTICE 'Updated: % -> % (due: %)', old_title, new_title, date_part;
-    ELSE
-        RAISE NOTICE 'No task found: %', old_title;
-    END IF;
-
-    RETURN QUERY SELECT * FROM tasks_view;
-END;
-$$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION week(target_date DATE DEFAULT CURRENT_DATE) RETURNS TEXT AS $$
 DECLARE
@@ -278,6 +186,98 @@ BEGIN
     result := result || E'+------------+------------+------------+------------+------------+------------+------------+\n';
     
     RETURN result;
+END;
+$$ LANGUAGE plpgsql;
+
+-- task management functions
+CREATE OR REPLACE FUNCTION add(task_desc TEXT) RETURNS SETOF tasks_view AS $$
+DECLARE
+    title_part TEXT;
+    date_part TEXT;
+BEGIN
+    title_part := split_part(task_desc, ':', 1);
+    date_part := trim(split_part(task_desc, ':', 2));
+    
+    INSERT INTO tasks (title, deadline) 
+    VALUES (trim(title_part), date_part::DATE);
+    
+    RAISE NOTICE 'Added: % (due: %)', trim(title_part), date_part;
+    RETURN QUERY SELECT * FROM tasks_view;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION done(task_title TEXT) RETURNS SETOF tasks_view AS $$
+BEGIN
+    UPDATE tasks SET status = 'completed' 
+    WHERE title ILIKE task_title 
+    AND status = 'pending';
+    
+    IF FOUND THEN
+        RAISE NOTICE 'Completed: %', task_title;
+    ELSE
+        RAISE NOTICE 'No pending task found: %', task_title;
+    END IF;
+
+    RETURN QUERY SELECT * FROM tasks_view;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION delete(task_title TEXT) RETURNS SETOF tasks_view AS $$
+BEGIN
+    DELETE FROM tasks 
+    WHERE title ILIKE task_title;
+    
+    IF FOUND THEN
+        RAISE NOTICE 'Deleted: %', task_title;
+    ELSE
+        RAISE NOTICE 'No task found: %', task_title;
+    END IF;
+
+    RETURN QUERY SELECT * FROM tasks_view;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION search(search_term TEXT) RETURNS SETOF tasks_view AS $$
+BEGIN
+    RETURN QUERY 
+    SELECT * FROM tasks_view 
+    WHERE title ILIKE '%' || search_term || '%';
+
+    IF NOT FOUND THEN
+        RAISE NOTICE 'No tasks found matching: %', search_term;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION change(task_desc TEXT) RETURNS SETOF tasks_view AS $$
+DECLARE
+    title_part TEXT;
+    date_part TEXT;
+    old_title TEXT;
+    new_title TEXT;
+BEGIN
+    old_title := split_part(task_desc, ' -> ', 1);
+    title_part := split_part(task_desc, ' -> ', 2);
+    
+    IF title_part = '' THEN
+        RAISE EXCEPTION 'Usage: change(''Old Title -> New Title: YYYY-MM-DD'')';
+    END IF;
+    
+    new_title := split_part(title_part, ':', 1);
+    date_part := trim(split_part(title_part, ':', 2));
+    
+    UPDATE tasks 
+    SET title = trim(new_title),
+        deadline = date_part::DATE
+    WHERE title ILIKE old_title;
+    
+    IF FOUND THEN
+        RAISE NOTICE 'Updated: % -> % (due: %)', old_title, new_title, date_part;
+    ELSE
+        RAISE NOTICE 'No task found: %', old_title;
+    END IF;
+
+    RETURN QUERY SELECT * FROM tasks_view;
 END;
 $$ LANGUAGE plpgsql;
 
