@@ -18,7 +18,7 @@
 
     - Current week view: SELECT week();
 
-    - Specific week view: SELECT week_view('YYY-MM-DD');
+    - Specific week view: SELECT week('YYY-MM-DD');
 
     - Quit: \q enter enter  
 
