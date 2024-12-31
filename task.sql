@@ -206,6 +206,72 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- week view for any given date
+CREATE OR REPLACE FUNCTION week_view(target_date DATE DEFAULT CURRENT_DATE) RETURNS TEXT AS $$
+DECLARE
+    start_of_week DATE;
+    end_of_week DATE;
+    result TEXT;
+    row_data TEXT[];
+    max_tasks INTEGER := 0;
+BEGIN
+    start_of_week := target_date - EXTRACT(DOW FROM target_date - 1)::INTEGER;
+    end_of_week := start_of_week + 6;
+
+    result := E'\n';
+    result := result || format(E'Week of %s to %s\n', 
+                             to_char(start_of_week, 'Mon DD, YYYY'),
+                             to_char(end_of_week, 'Mon DD, YYYY'));
+    result := result || E'+------------+------------+------------+------------+------------+------------+------------+\n';
+    result := result || E'|   Monday   |  Tuesday   | Wednesday  |  Thursday  |   Friday   |  Saturday  |   Sunday   |\n';
+    result := result || E'+------------+------------+------------+------------+------------+------------+------------+\n';
+
+    SELECT COALESCE(MAX(task_count), 0) INTO max_tasks
+    FROM (
+        SELECT COUNT(*) as task_count
+        FROM tasks
+        WHERE deadline BETWEEN start_of_week AND end_of_week
+        GROUP BY DATE(deadline)
+    ) counts;
+
+    FOR i IN 1..GREATEST(max_tasks, 1) LOOP
+        SELECT array_agg(COALESCE(task_text, '            '))
+        INTO row_data
+        FROM (
+            SELECT 
+                day,
+                MAX(CASE 
+                    WHEN task_num = i THEN
+                        CASE 
+                            WHEN t.status = 'completed' THEN 
+                                RPAD('[✓] ' || substring(t.title, 1, 7), 12, ' ')
+                            ELSE 
+                                RPAD('[ ] ' || substring(t.title, 1, 7), 12, ' ')
+                        END
+                    ELSE NULL
+                END) as task_text
+            FROM generate_series(start_of_week, end_of_week, '1 day'::interval) day
+            LEFT JOIN (
+                SELECT 
+                    title,
+                    status,
+                    deadline,
+                    ROW_NUMBER() OVER (PARTITION BY deadline ORDER BY created_at) as task_num
+                FROM tasks
+                WHERE deadline BETWEEN start_of_week AND end_of_week
+            ) t ON DATE(t.deadline) = day
+            GROUP BY day
+            ORDER BY day
+        ) daily_tasks;
+
+        result := result || '|' || array_to_string(row_data, '|') || E'|\n';
+    END LOOP;
+
+    result := result || E'+------------+------------+------------+------------+------------+------------+------------+\n';
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql;
+
 -- welcome
 \echo '\n=== Task Manager ==='
 \echo 'Commands:'
