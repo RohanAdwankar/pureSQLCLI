@@ -32,8 +32,9 @@
 
 ## Installation
 1. Install psql (comes with PostgreSQL or you can use homebrew etc.)
-2. ```git clone https://github.com/RohanAdwankar/pureSQLCLI.git```
-3. ```cat pureSQLCLI/task.sql - | psql -d task_manager```
+2. ```createdb task_manager```
+3. ```git clone https://github.com/RohanAdwankar/pureSQLCLI.git```
+4. ```cat pureSQLCLI/task.sql - | psql -d task_manager```
 
 ## Why was this made?
 - To improve my SQL fluency as previously I've only written small queries. To learn a language I usually make a CLI. I guess SQL is no exception!
