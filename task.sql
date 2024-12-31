@@ -44,6 +44,12 @@ ORDER BY
     CASE status WHEN 'pending' THEN 0 ELSE 1 END,
     deadline;
 
+CREATE OR REPLACE FUNCTION list_tasks() RETURNS SETOF tasks_view AS $$
+BEGIN
+    RETURN QUERY SELECT * FROM tasks_view;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION week(target_date DATE DEFAULT CURRENT_DATE) RETURNS TEXT AS $$
 DECLARE
     start_of_week DATE;
@@ -281,7 +287,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- misc functions
+-- ASCII art
 CREATE OR REPLACE FUNCTION howdy_partner() RETURNS TEXT AS $$
 BEGIN
     RETURN E'
@@ -291,6 +297,80 @@ BEGIN
   ___) | |_| | |___  | |\\__,_/__/|_|_| |_|  |_\\__,_|_||_\\__,_\\__, \\___|_|  
  |____/ \\__\\_\\_____| |_|                                     |___/           
 ';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION stat() RETURNS TEXT AS $$
+DECLARE
+    total_tasks INTEGER;
+    completed_tasks INTEGER;
+    remaining_tasks INTEGER;
+    chart_width INTEGER := 30;
+    chart_height INTEGER := 8;
+    completion_percentage NUMERIC;
+    bar_length INTEGER;
+    progress_bar TEXT := '';
+    current_date DATE := CURRENT_DATE;
+    earliest_deadline DATE;
+    latest_deadline DATE;
+    days_total INTEGER;
+    current_row INTEGER;
+    ideal_remaining NUMERIC;
+    result TEXT := '';
+BEGIN
+    SELECT COUNT(*), 
+           COUNT(*) FILTER (WHERE status = 'completed'),
+           MIN(deadline),
+           MAX(deadline)
+    INTO total_tasks, completed_tasks, earliest_deadline, latest_deadline
+    FROM tasks;
+    
+    remaining_tasks := total_tasks - completed_tasks;
+    completion_percentage := ROUND((completed_tasks::NUMERIC / NULLIF(total_tasks, 0) * 100)::NUMERIC, 1);
+    days_total := (latest_deadline - earliest_deadline) + 1;
+    
+    result := result || format('Tasks: %s | Done: %s | Left: %s | Status: %s%%', 
+                             total_tasks, completed_tasks, remaining_tasks, COALESCE(completion_percentage, 0));
+    
+    result := result || E'\n';
+    bar_length := FLOOR((completion_percentage * chart_width) / 100);
+    progress_bar := repeat('█', bar_length) || repeat('░', chart_width - bar_length);
+    result := result || E'Progress Bar: [' || progress_bar || E']\n\n';
+
+    FOR i IN 0..chart_height-1 LOOP
+        current_row := total_tasks - (i * (total_tasks::NUMERIC / (chart_height-1)))::INTEGER;
+        
+        result := result || format('%2s|', current_row);
+        
+        FOR j IN 1..chart_width LOOP
+            ideal_remaining := total_tasks - (j::NUMERIC / chart_width * total_tasks);
+            
+            IF current_row = total_tasks AND j = 1 THEN
+                result := result || 'O';
+            ELSIF current_row = ROUND(ideal_remaining) THEN
+                result := result || '─';
+            ELSIF current_row = remaining_tasks AND 
+                  j = ROUND((current_date - earliest_deadline)::NUMERIC / days_total * chart_width) THEN
+                result := result || '●';
+            ELSIF j = chart_width THEN
+                result := result || '|';
+            ELSE
+                result := result || ' ';
+            END IF;
+        END LOOP;
+        result := result || E'\n';
+    END LOOP;
+
+    result := result || '  +' || repeat('-', chart_width) || E'+\n';
+    result := result || format('   %-*s%s', 
+                             chart_width - 10,
+                             to_char(earliest_deadline, 'MM/DD'),
+                             to_char(latest_deadline, 'MM/DD')) || E'\n';
+    
+    result := result || E'\n';
+    result := result || E'  O Start   ─ Ideal   ● Current\n';
+    
+    RETURN result;
 END;
 $$ LANGUAGE plpgsql;
 

@@ -14,6 +14,8 @@
 
     - Search tasks: SELECT search('term');
 
+    - See stats and a burndown chart: SELECT stat();
+
 ### Edit Tasks
     - Add task: SELECT add('task: YYYY-MM-DD');
 
