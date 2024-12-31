@@ -1,5 +1,5 @@
-# Pure SQL Task Management CLI
-![demo](https://github.com/user-attachments/assets/dff94cf2-86cd-4624-aabb-d2d8a70b58c7)
+![demo](https://github.com/user-attachments/assets/ccf1341c-cd53-4db3-917a-14aefdd1af0c)# Pure SQL Task Management CLI
+![demo](https://github.com/user-attachments/assets/9c26e287-9a56-4498-952b-9090ad26e995)
 ## Features
 ### View Tasks
     - View all tasks : SELECT * FROM list_tasks();
