@@ -30,15 +30,15 @@
 
     - Scroll Downwards: enter                                         
 
-## Installation:
+## Installation
 1. Install psql (comes with PostgreSQL or you can use homebrew etc.)
 2. ```git clone https://github.com/RohanAdwankar/pureSQLCLI.git```
 3. ```cat pureSQLCLI/task.sql - | psql -d task_manager```
 
-## why was this made???
-- i wanted to improve my sql fluency as in the past ive only written small queries. well to learn a new language i usually make a CLI. so I guess SQL is no exception :)
-- i needed a quick task manager that didn't have all the excess features and bloat
-- i thought it would be funny to have a fully functional CLI entirely in SQL
+## Why was this made?
+- To improve my SQL fluency as previously I've only written small queries. To learn a language I usually make a CLI. I guess SQL is no exception!
+- Needed a quick task manager that didn't have all the excess features and bloat
+- I thought it would be funny to have a fully functional CLI entirely in a .sql file.
 
-## next steps
-- i added all the features i needed but if you want something else feel free to open an issue and ill get to it!
+## Next Steps
+- I added all the features I needed but if you want something else feel free to open an issue and I'll get to it!
